@@ -1,42 +1,42 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-SPIES_FOR_MISSION = {}
+AGENTS_FOR_MISSION = {}
 
 def get_name(cls):
     return cls.__name__
 
 def finish_mission():
-    global SPIES_FOR_MISSION
-    for spy in SPIES_FOR_MISSION.values():
-        spy.finish_mission()
-    SPIES_FOR_MISSION = {}
+    global AGENTS_FOR_MISSION
+    for agent in AGENTS_FOR_MISSION.values():
+        agent.finish_mission()
+    AGENTS_FOR_MISSION = {}
 
-class SpyWrapper(object):
+class AgentWrapper(object):
     @classmethod
-    def on(cls, who):
-        global SPIES_FOR_MISSION
+    def spy(cls, who):
+        global AGENTS_FOR_MISSION
         def wrapper(fn):
             def wrapper_2(*args, **kw):
-                spy_name = get_name(who)
-                spy_on_mission = Spy(spy_name, who)
+                agent_name = get_name(who)
+                agent_on_mission = Agent(agent_name, who)
 
-                SPIES_FOR_MISSION[spy_name] = spy_on_mission 
+                AGENTS_FOR_MISSION[agent_name] = agent_on_mission 
 
                 return fn(*args, **kw)
             wrapper_2.__name__ = fn.__name__
             wrapper_2.__doc__ = fn.__name__
             return wrapper_2
         return wrapper
-spy = SpyWrapper
+agent = AgentWrapper
 
-class SpiesWatcher(object):
+class AgentsWatcher(object):
     def __getattr__(self, name):
-        global SPIES_FOR_MISSION
-        return SPIES_FOR_MISSION[name]
-spies = SpiesWatcher()
+        global AGENTS_FOR_MISSION
+        return AGENTS_FOR_MISSION[name]
+agents = AgentsWatcher()
 
-class Spy(object):
+class Agent(object):
     def __init__(self, name, target):
         self.name = name
         self.target = target
@@ -51,19 +51,19 @@ class Spy(object):
         return self.interceptions[what]
 
 class Interception(object):
-    def __init__(self, spy, method_name):
-        self.spy = spy
+    def __init__(self, agent, method_name):
+        self.agent = agent
         self.method_name = method_name
         self.return_value = None
         self.old_method = None
         self.watch()
 
     def watch(self):
-        self.old_method = getattr(self.spy.target, self.method_name)
-        setattr(self.spy.target, self.method_name, self.execute)
+        self.old_method = getattr(self.agent.target, self.method_name)
+        setattr(self.agent.target, self.method_name, self.execute)
 
     def get_lost(self):
-        setattr(self.spy.target, self.method_name, self.old_method)
+        setattr(self.agent.target, self.method_name, self.old_method)
         self.old_method = None
 
     def execute(self, *args, **kw):

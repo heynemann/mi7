@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-from mi7.core import finish_mission, spy, spies
+from mi7.core import agent, agents, finish_mission
 import tests.controllers
 
-@spy.on(tests.controllers.User)
+@agent.spy(tests.controllers.User)
 def test_controller_verifies_if_user_is_authenticated():
-    spies.User \
+    agents.User \
          .intercept('is_authenticated') \
          .returns(True)
 
@@ -18,9 +18,9 @@ def test_controller_verifies_if_user_is_authenticated():
 
     finish_mission()
 
-@spy.on(tests.controllers.User)
+@agent.spy(tests.controllers.User)
 def test_methods_properly_reset_after_test():
-    spies.User \
+    agents.User \
          .intercept('is_authenticated') \
          .returns(True)
 
