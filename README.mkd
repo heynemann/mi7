@@ -16,6 +16,7 @@ supposed to be, and still be able to test things in isolation.
 
 I'll try to illustrate with an example:
 
+    @new_mission
     @agent.spy(tests.controllers.User)
     def test_controller_verifies_if_user_is_authenticated():
         agents.User \
@@ -32,10 +33,11 @@ I'll try to illustrate with an example:
                      .saw('is_authenticated')
                      .times == 1
 
-        finish_mission()
-
 Some concepts going on here:
 
+* The new_mission construct starts a mission for the agents. This must be
+  executed before the agents are assigned. This decorator is what will finish
+  the mission, no matter what happens.
 * There's the agent.spy action. This decorator instructs our agent on his
 mission. He's supposed to keep watch of the User class in the
 mysite.controllers module.
@@ -46,9 +48,6 @@ agent
 is codenamed User, which is the last part of it's full name. If we have a
 superstar agent (aren't they all?), we can name him as he wants, like this -
 .as('Bond').
-* Finally, you finish the mission, so we can generate mission status reports
-and such. This step will undo all the interceptions, so it is pretty important
-to finish the mission.
 
 Comedy apart, the main thing here is that the majority of my test is ABOUT the
 business and not creating mocks and expectations.

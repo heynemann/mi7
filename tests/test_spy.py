@@ -1,14 +1,20 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-from mi7.core import agent, agents, finish_mission
+'''Tests that the agents are working'''
+
+from mi7.core import agent, agents, finish_mission, new_mission
+
 import tests.controllers
 
+@new_mission
 @agent.spy(tests.controllers.User)
-def test_controller_verifies_if_user_is_authenticated():
+def test_controller_user_spying():
+    '''Verifies that we can spy on the user model'''
+
     agents.User \
-         .intercept('is_authenticated') \
-         .returns(True)
+          .intercept('is_authenticated') \
+          .returns(True)
 
     controller = tests.controllers.MyController()
 
@@ -16,13 +22,14 @@ def test_controller_verifies_if_user_is_authenticated():
 
     assert result == "WooHoo"
 
-    finish_mission()
-
+@new_mission
 @agent.spy(tests.controllers.User)
-def test_methods_properly_reset_after_test():
+def test_finishing_mission_works():
+    '''Verifies that after finishing the mission
+    the data is cleared properly.'''
     agents.User \
-         .intercept('is_authenticated') \
-         .returns(True)
+          .intercept('is_authenticated') \
+          .returns(True)
 
     controller = tests.controllers.MyController()
 
@@ -32,5 +39,3 @@ def test_methods_properly_reset_after_test():
     result = controller.index()
 
     assert result == "Fail", result
-
-    finish_mission()
