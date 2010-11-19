@@ -28,28 +28,27 @@ I'll try to illustrate with an example:
 
         assert result == "WooHoo"
 
-        finish_mission()
-
         assert agents.User
                      .saw('is_authenticated')
                      .times == 1
 
+        finish_mission()
+
 Some concepts going on here:
 
-* First there's the new mission decorator. What this decorator does is enter in
-a RECORD mode that keeps track of all the spies we are sending to the mission
-(cool metaphor, isn't it?). This is required so, no matter what happens, we
-erase records of all our spies when the test is over (restore the rightful
-classes).
-* Then there's the spy.on action. This decorator instructs our spy on his
+* There's the agent.spy action. This decorator instructs our agent on his
 mission. He's supposed to keep watch of the User class in the
 mysite.controllers module.
-* The spies collection keeps track of all our spies until the end of the
-mission. The agreement is that the spies will be known by their last name so
-they are not entirely trackable (for their own safety). So in this case our spy
+* The agents collection keeps track of all our agents until the end of the
+mission. The agreement is that the agents will be known by their last name so
+they are not entirely trackable (for their own safety). So in this case our
+agent
 is codenamed User, which is the last part of it's full name. If we have a
-superstar spy (aren't they all?), we can name him as he wants, like this -
+superstar agent (aren't they all?), we can name him as he wants, like this -
 .as('Bond').
+* Finally, you finish the mission, so we can generate mission status reports
+and such. This step will undo all the interceptions, so it is pretty important
+to finish the mission.
 
 Comedy apart, the main thing here is that the majority of my test is ABOUT the
 business and not creating mocks and expectations.
