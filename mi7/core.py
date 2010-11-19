@@ -6,21 +6,23 @@ SPIES_FOR_MISSION = {}
 def get_name(cls):
     return cls.__name__
 
-def clear_mission():
-    pass
-
-def new_mission(fn):
-    clear_mission()
-    return fn
+def finish_mission():
+    global SPIES_FOR_MISSION
+    for spy in SPIES_FOR_MISSION.values():
+        spy.finish_mission()
+    SPIES_FOR_MISSION = {}
 
 class SpyWrapper(object):
     @classmethod
     def on(cls, who):
-        spy_name = get_name(who)
-        spy_on_mission = Spy(spy_name, who)
-        SPIES_FOR_MISSION[spy_name] = spy_on_mission
+        global SPIES_FOR_MISSION
         def wrapper(fn):
             def wrapper_2(*args, **kw):
+                spy_name = get_name(who)
+                spy_on_mission = Spy(spy_name, who)
+
+                SPIES_FOR_MISSION[spy_name] = spy_on_mission 
+
                 return fn(*args, **kw)
             wrapper_2.__name__ = fn.__name__
             wrapper_2.__doc__ = fn.__name__
@@ -30,6 +32,7 @@ spy = SpyWrapper
 
 class SpiesWatcher(object):
     def __getattr__(self, name):
+        global SPIES_FOR_MISSION
         return SPIES_FOR_MISSION[name]
 spies = SpiesWatcher()
 
@@ -40,7 +43,7 @@ class Spy(object):
         self.interceptions = {}
 
     def finish_mission(self):
-        for interception in self.interception.values():
+        for interception in self.interceptions.values():
             interception.get_lost()
 
     def intercept(self, what):
