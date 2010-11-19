@@ -16,22 +16,23 @@ supposed to be, and still be able to test things in isolation.
 
 I'll try to illustrate with an example:
 
-    @new_mission
-    @spy.on(mysite.controllers.User)
+    @agent.spy(tests.controllers.User)
     def test_controller_verifies_if_user_is_authenticated():
-        spies.User
-             .intercept('is_authenticated')
+        agents.User \
+             .intercept('is_authenticated') \
              .returns(True)
 
-        controller = mysite.controllers.MyController()
+        controller = tests.controllers.MyController()
 
         result = controller.index()
 
-        assert result
+        assert result == "WooHoo"
 
-        assert spies.User
-                    .saw('is_authenticated')
-                    .times == 1
+        finish_mission()
+
+        assert agents.User
+                     .saw('is_authenticated')
+                     .times == 1
 
 Some concepts going on here:
 
@@ -46,7 +47,7 @@ mysite.controllers module.
 * The spies collection keeps track of all our spies until the end of the
 mission. The agreement is that the spies will be known by their last name so
 they are not entirely trackable (for their own safety). So in this case our spy
-is known just as User, which is the last part of it's full name. If we have a
+is codenamed User, which is the last part of it's full name. If we have a
 superstar spy (aren't they all?), we can name him as he wants, like this -
 .as('Bond').
 
