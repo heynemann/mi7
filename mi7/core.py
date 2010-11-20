@@ -5,11 +5,13 @@
 Core agent functionality
 '''
 
+from mi7.errors import UnknownAgentError
+
 AGENTS_FOR_MISSION = {}
 
 def get_name(cls):
     '''Returns the name of the specified class/module'''
-    return cls.__name__
+    return cls.__name__.split('.')[-1].capitalize()
 
 def finish_mission():
     '''Clears up after the agents for the current mission'''
@@ -54,7 +56,8 @@ class AgentsWatcher(object):
     '''Keeps track of agents in the current mission'''
     def __getattr__(self, name):
         '''Returns the agent by name'''
-        #TODO: VERIFY IF AGENT IS REGISTERED
+        if not name in AGENTS_FOR_MISSION:
+            raise UnknownAgentError("You do not have clearance to use agent's %s services (agent not found)" % name)
         return AGENTS_FOR_MISSION[name]
 agents = AgentsWatcher()
 
