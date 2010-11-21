@@ -20,3 +20,8 @@ class MyController(object):
 
     def other2(self):
         return always_true()
+
+    def user_name(self):
+        user = User()
+
+        return user.username

@@ -122,7 +122,7 @@ class Interception(object):
         self.return_value = None
         self.old_method = None
         self.replacements = []
-        self.watch()
+        self.attr_replacements = []
 
     def watch(self):
         '''Start watching the interception target.'''
@@ -150,6 +150,18 @@ class Interception(object):
                     self.replacements.append(replacement)
                     setattr(module, target_name, self.agent.target)
 
+    def change_attribute(self):
+        def getattr_replacement(instance, attr_name):
+            if attr_name == self.method_name:
+                return self.attribute_value
+
+            return object.__getattribute__(instance, attr_name)
+
+        replacement = (self.agent.target,
+                       '__getattribute__', 
+                       getattr(self.agent.target, '__getattribute__', None))
+        self.attr_replacements.append(replacement)
+        setattr(self.agent.target, '__getattribute__', getattr_replacement)
 
     def get_lost(self):
         '''Stop intercepting the target.'''
@@ -166,3 +178,8 @@ class Interception(object):
     def returns(self, value):
         '''Specifies the return value for the interception.'''
         self.return_value = value
+        self.watch()
+
+    def as_attribute(self, value):
+        self.attribute_value = value
+        self.change_attribute()
