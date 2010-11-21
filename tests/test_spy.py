@@ -54,7 +54,12 @@ def test_intercepting_modules():
           .intercept('returns_false') \
           .returns(True)
 
+    agents.controllers \
+          .intercept('some_attribute') \
+          .as_attribute('test')
+
     assert tests.controllers.returns_false()
+    assert tests.controllers.some_attribute == 'test'
 
 @new_mission
 def test_agent_does_not_exist():

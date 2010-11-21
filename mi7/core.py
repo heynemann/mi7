@@ -15,6 +15,12 @@ AGENTS_FOR_MISSION = {}
 FINDER = None
 FINDER_PATH = None
 
+def true_import(module_name):
+    module = __import__(module_name)
+    if '.' in module_name:
+        module = reduce(getattr, module_name.split('.')[1:], module)
+    return module
+
 def get_actual_who(who):
     '''Gets the actual target for the interception'''
     if inspect.isclass(who):
@@ -102,15 +108,31 @@ class Agent(object):
                                         target.__module__ or \
                                         target.__name__
         self.interceptions = {}
+        self.old_getattribute = None
+        if inspect.isclass(self.target):
+            self.replace_getattribute()
+
+    def replace_getattribute(self):
+        def getattribute_replacement(instance, attr_name):
+            for interception in self.interceptions.values():
+                if interception.match(attr_name):
+                    return interception.execute()
+
+            return object.__getattribute__(instance, attr_name)
+        self.old_getattribute = getattr(self.target, '__getattribute__')
+
+        setattr(self.target, '__getattribute__', getattribute_replacement)
 
     def finish_mission(self):
         '''Finishes the mission. Stop intercepting.'''
+        setattr(self.target, '__getattribute__', self.old_getattribute) 
         for interception in self.interceptions.values():
             interception.get_lost()
 
     def intercept(self, what):
         '''Start intercepting one target'''
         self.interceptions[what] = Interception(self, what)
+
         return self.interceptions[what]
 
 class Interception(object):
@@ -119,25 +141,46 @@ class Interception(object):
         '''Creates one interception'''
         self.agent = source_agent
         self.target_name = target_name
+        self.attribute_value = None
         self.return_value = None
         self.exception_value = None
-        self.old_method = None
         self.replacements = []
-        self.attr_replacements = []
 
-    def watch(self):
-        '''Start watching the interception target.'''
-        self.old_method = getattr(self.agent.target, self.target_name)
-        setattr(self.agent.target, self.target_name, self.execute)
+        self.resync_references()
+
+    def match(self, target_name):
+        return target_name == self.target_name
+
+    def replace_at_target(self):
+        if not inspect.ismodule(self.agent.target):
+            return
+
+        replacement = (self.agent.target,
+                       self.target_name,
+                       getattr(self.agent.target,
+                               self.target_name,
+                               None))
+        if self.attribute_value:
+            setattr(self.agent.target,
+                    self.target_name,
+                    self.attribute_value)
+        else:
+            setattr(self.agent.target,
+                    self.target_name,
+                    self.execute)
+
+        self.replacements.append(replacement)
+        self.resync_references()
+
+    def resync_references(self):
+        '''Resync any references to the given target.'''
 
         for module_name, module in FINDER.modules.iteritems():
-            if inspect.isbuiltin(module) or \
-               module_name == self.agent.target_module_name:
+            if module_name == self.agent.target_module_name:
                 continue
             if self.target_name in module.globalnames:
-                module = __import__(module_name)
-                if '.' in module_name:
-                    module = reduce(getattr, module_name.split('.')[1:], module)
+                module = true_import(module_name)
+
                 if hasattr(module, self.target_name):
                     method = getattr(module, self.target_name)
                     method_module = method.__module__
@@ -145,56 +188,36 @@ class Interception(object):
                         replacement = (module, self.target_name, method)
                         self.replacements.append(replacement)
                         setattr(module, self.target_name, self.execute)
-                elif hasattr(module, self.agent.target.__name__):
-                    target_name = self.agent.target.__name__
-                    replacement = (module, 
-                                   target_name, 
-                                   getattr(module, target_name))
-                    self.replacements.append(replacement)
-                    setattr(module, target_name, self.agent.target)
-
-    def change_attribute(self):
-        def getattr_replacement(instance, attr_name):
-            if attr_name == self.target_name:
-                return self.attribute_value
-
-            return object.__getattribute__(instance, attr_name)
-
-        replacement = (self.agent.target,
-                       '__getattribute__', 
-                       getattr(self.agent.target, '__getattribute__'))
-        self.attr_replacements.append(replacement)
-        setattr(self.agent.target, '__getattribute__', getattr_replacement)
 
     def get_lost(self):
         '''Stop intercepting the target.'''
-        setattr(self.agent.target, self.target_name, self.old_method)
-        self.old_method = None
         for replacement in self.replacements:
             setattr(replacement[0], replacement[1], replacement[2])
         self.replacements = []
-        for replacement in self.attr_replacements:
-            setattr(replacement[0], replacement[1], replacement[2])
-        self.attr_replacements = []
 
     def execute(self, *args, **kw):
         '''Executes the interception.'''
         if self.exception_value:
             raise self.exception_value
+        if self.attribute_value:
+            return self.attribute_value
 
-        return self.return_value
+        if inspect.ismodule(self.agent.target):
+            return self.return_value
+
+        return lambda *args, **kw: self.return_value
 
     def returns(self, value):
         '''Specifies the return value for the interception.'''
         self.return_value = value
-        self.watch()
+        self.replace_at_target()
 
     def as_attribute(self, value):
         '''Specifies the return value for the given attribute'''
         self.attribute_value = value
-        self.change_attribute()
+        self.replace_at_target()
 
     def raises(self, exception):
         '''Specifies that this interception should raise'''
         self.exception_value = exception
-        self.watch()
+        self.replace_at_target()
