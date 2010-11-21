@@ -27,7 +27,7 @@ def get_actual_who(who):
 
 def get_name(cls):
     '''Returns the name of the specified class/module'''
-    return cls.__name__.split('.')[-1].capitalize()
+    return cls.__name__.split('.')[-1]
 
 def finish_mission():
     '''Clears up after the agents for the current mission'''

@@ -15,7 +15,7 @@ def test_can_override_global():
     here in the test, the same module when imported
     by the controller still has the interception.'''
 
-    agents.Utils.intercept('always_true') \
+    agents.utils.intercept('always_true') \
                 .returns(False)
 
     controller = tests.controllers.MyController()

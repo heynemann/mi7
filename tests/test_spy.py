@@ -50,7 +50,7 @@ def test_intercepting_modules():
     '''Verifies that spying on modules
     works as well'''
 
-    agents.Controllers \
+    agents.controllers \
           .intercept('returns_false') \
           .returns(True)
 
@@ -74,7 +74,7 @@ def test_can_override_global():
     here in the test, the same module when imported
     by the controller still has the interception.'''
 
-    agents.Utils.intercept('always_true') \
+    agents.utils.intercept('always_true') \
                 .returns(False)
 
     controller = tests.controllers.MyController()
