@@ -116,6 +116,7 @@ class Interception(object):
         self.method_name = method_name
         self.return_value = None
         self.old_method = None
+        self.replacements = []
         self.watch()
 
     def watch(self):
@@ -132,6 +133,7 @@ class Interception(object):
                     module = reduce(getattr, module_name.split('.')[1:], module)
                 if hasattr(module, self.method_name):
                     if getattr(module, self.method_name).__module__ ==  self.agent.target_module_name:
+                        self.replacements.append((module, self.method_name, getattr(module, self.method_name)))
                         setattr(module, self.method_name, self.execute)
                 elif hasattr(module, self.agent.target.__name__):
                     setattr(module, self.agent.target.__name__, self.agent.target)
@@ -141,6 +143,9 @@ class Interception(object):
         '''Stop intercepting the target.'''
         setattr(self.agent.target, self.method_name, self.old_method)
         self.old_method = None
+        for replacement in self.replacements:
+            setattr(replacement[0], replacement[1], replacement[2])
+        self.replacements = []
 
     def execute(self, *args, **kw):
         '''Executes the interception.'''
