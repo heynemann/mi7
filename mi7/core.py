@@ -9,7 +9,7 @@ import sys
 import inspect
 from modulefinder import ModuleFinder
 
-from mi7.errors import UnknownAgentError
+from mi7.errors import UnknownAgentError, InvalidAgentTargetError
 
 AGENTS_FOR_MISSION = {}
 FINDER = None
@@ -23,9 +23,7 @@ def get_actual_who(who):
     elif inspect.ismodule(who):
         return sys.modules[who.__name__]
 
-    #TODO: TEST THIS!
-    raise ValueError("""Invalid person to spy on. 
-    Valid people are modules and classes.""")
+    raise InvalidAgentTargetError(InvalidAgentTargetError.message)
 
 def get_name(cls):
     '''Returns the name of the specified class/module'''
@@ -90,8 +88,7 @@ class AgentsWatcher(object):
     def __getattr__(self, name):
         '''Returns the agent by name'''
         if not name in AGENTS_FOR_MISSION:
-            raise UnknownAgentError("""You do not have clearance to
-            use agent's %s services (agent not found)""" % name)
+            raise UnknownAgentError(UnknownAgentError.message % name)
         return AGENTS_FOR_MISSION[name]
 agents = AgentsWatcher()
 
@@ -149,6 +146,8 @@ class Interception(object):
                         setattr(module, self.method_name, self.execute)
                 elif hasattr(module, self.agent.target.__name__):
                     target_name = self.agent.target.__name__
+                    replacement = (module, target_name, getattr(module, target_name))
+                    self.replacements.append(replacement)
                     setattr(module, target_name, self.agent.target)
 
 
