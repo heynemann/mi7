@@ -120,6 +120,7 @@ class Interception(object):
         self.agent = source_agent
         self.method_name = method_name
         self.return_value = None
+        self.exception_value = None
         self.old_method = None
         self.replacements = []
         self.attr_replacements = []
@@ -159,7 +160,7 @@ class Interception(object):
 
         replacement = (self.agent.target,
                        '__getattribute__', 
-                       getattr(self.agent.target, '__getattribute__', None))
+                       getattr(self.agent.target, '__getattribute__'))
         self.attr_replacements.append(replacement)
         setattr(self.agent.target, '__getattribute__', getattr_replacement)
 
@@ -170,9 +171,15 @@ class Interception(object):
         for replacement in self.replacements:
             setattr(replacement[0], replacement[1], replacement[2])
         self.replacements = []
+        for replacement in self.attr_replacements:
+            setattr(replacement[0], replacement[1], replacement[2])
+        self.attr_replacements = []
 
     def execute(self, *args, **kw):
         '''Executes the interception.'''
+        if self.exception_value:
+            raise self.exception_value
+
         return self.return_value
 
     def returns(self, value):
@@ -181,5 +188,11 @@ class Interception(object):
         self.watch()
 
     def as_attribute(self, value):
+        '''Specifies the return value for the given attribute'''
         self.attribute_value = value
         self.change_attribute()
+
+    def raises(self, exception):
+        '''Specifies that this interception should raise'''
+        self.exception_value = exception
+        self.watch()

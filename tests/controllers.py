@@ -25,3 +25,7 @@ class MyController(object):
         user = User()
 
         return user.username
+
+    def return_other_attribute(self):
+        user = User()
+        return user.other_attribute
