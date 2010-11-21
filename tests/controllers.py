@@ -3,6 +3,7 @@
 
 from tests.models import User
 import tests.utils
+from tests.utils import always_true
 
 def returns_false():
     return False
@@ -16,3 +17,6 @@ class MyController(object):
 
     def other(self):
         return tests.utils.always_true()
+
+    def other2(self):
+        return always_true()

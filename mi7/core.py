@@ -2,12 +2,28 @@
 #-*- coding:utf-8 -*-
 
 '''
-Core agent functionality
+Core agent decorated_functionality
 '''
+
+import sys
+import inspect
+from modulefinder import ModuleFinder
 
 from mi7.errors import UnknownAgentError
 
 AGENTS_FOR_MISSION = {}
+FINDER = None
+
+def get_actual_who(who):
+    '''Gets the actual target for the interception'''
+    if inspect.isclass(who):
+        module = sys.modules[who.__module__]
+        return getattr(module, who.__name__)
+    elif inspect.ismodule(who):
+        return sys.modules[who.__name__]
+
+    #TODO: TEST THIS!
+    raise ValueError("Invalid person to spy on. Valid people are modules and classes.")
 
 def get_name(cls):
     '''Returns the name of the specified class/module'''
@@ -19,16 +35,26 @@ def finish_mission():
         one_agent.finish_mission()
     AGENTS_FOR_MISSION.clear()
 
-def new_mission(function):
+def new_mission(decorated_function):
     '''Decorator that starts a new mission'''
+    global FINDER
+
+    if not FINDER:
+        if hasattr(decorated_function, 'decorated_function'):
+            path = inspect.getfile(decorated_function.decorated_function)
+        else:
+            path = './tests/test_spy.py' 
+        FINDER = ModuleFinder()
+        FINDER.run_script(path)
+
     def wrapper(*args, **kw):
         '''Wrapper for the new_mission decorator'''
         try:
-            return function(*args, **kw)
+            return decorated_function(*args, **kw)
         finally:
             finish_mission()
-    wrapper.__name__ = function.__name__
-    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = decorated_function.__name__
+    wrapper.__doc__ = decorated_function.__doc__
     return wrapper
 
 class AgentWrapper(object):
@@ -36,18 +62,20 @@ class AgentWrapper(object):
     @classmethod
     def spy(cls, who):
         '''Spies on a given class/module'''
-        def wrapper(function):
+        def wrapper(decorated_function):
             '''Wrapper for the spy decorator'''
             def wrapper_2(*args, **kw):
                 '''Wrapper for the spy decorator'''
-                agent_name = get_name(who)
-                agent_on_mission = Agent(agent_name, who)
+                target = get_actual_who(who)
+                agent_name = get_name(target)
+                agent_on_mission = Agent(agent_name, target)
 
                 AGENTS_FOR_MISSION[agent_name] = agent_on_mission 
 
-                return function(*args, **kw)
-            wrapper_2.__name__ = function.__name__
-            wrapper_2.__doc__ = function.__name__
+                return decorated_function(*args, **kw)
+            wrapper_2.__name__ = decorated_function.__name__
+            wrapper_2.__doc__ = decorated_function.__name__
+            wrapper_2.decorated_function = decorated_function
             return wrapper_2
         return wrapper
 agent = AgentWrapper
@@ -67,6 +95,7 @@ class Agent(object):
         '''Initializes one agent.'''
         self.name = name
         self.target = target
+        self.target_module_name = inspect.isclass(target) and target.__module__ or target.__name__
         self.interceptions = {}
 
     def finish_mission(self):
@@ -93,6 +122,20 @@ class Interception(object):
         '''Start watching the interception target.'''
         self.old_method = getattr(self.agent.target, self.method_name)
         setattr(self.agent.target, self.method_name, self.execute)
+
+        for module_name, module in FINDER.modules.iteritems():
+            if inspect.isbuiltin(module) or module_name == self.agent.target_module_name:
+                continue
+            if self.method_name in module.globalnames:
+                module = __import__(module_name)
+                if '.' in module_name:
+                    module = reduce(getattr, module_name.split('.')[1:], module)
+                if hasattr(module, self.method_name):
+                    if getattr(module, self.method_name).__module__ ==  self.agent.target_module_name:
+                        setattr(module, self.method_name, self.execute)
+                elif hasattr(module, self.agent.target.__name__):
+                    setattr(module, self.agent.target.__name__, self.agent.target)
+
 
     def get_lost(self):
         '''Stop intercepting the target.'''

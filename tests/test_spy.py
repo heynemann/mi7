@@ -78,3 +78,5 @@ def test_can_override_global():
     controller = tests.controllers.MyController()
 
     assert not controller.other()
+
+    assert not controller.other2()
