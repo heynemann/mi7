@@ -115,10 +115,10 @@ class Agent(object):
 
 class Interception(object):
     '''Abstracts one interception.'''
-    def __init__(self, source_agent, method_name):
+    def __init__(self, source_agent, target_name):
         '''Creates one interception'''
         self.agent = source_agent
-        self.method_name = method_name
+        self.target_name = target_name
         self.return_value = None
         self.exception_value = None
         self.old_method = None
@@ -127,33 +127,35 @@ class Interception(object):
 
     def watch(self):
         '''Start watching the interception target.'''
-        self.old_method = getattr(self.agent.target, self.method_name)
-        setattr(self.agent.target, self.method_name, self.execute)
+        self.old_method = getattr(self.agent.target, self.target_name)
+        setattr(self.agent.target, self.target_name, self.execute)
 
         for module_name, module in FINDER.modules.iteritems():
             if inspect.isbuiltin(module) or \
                module_name == self.agent.target_module_name:
                 continue
-            if self.method_name in module.globalnames:
+            if self.target_name in module.globalnames:
                 module = __import__(module_name)
                 if '.' in module_name:
                     module = reduce(getattr, module_name.split('.')[1:], module)
-                if hasattr(module, self.method_name):
-                    method = getattr(module, self.method_name)
+                if hasattr(module, self.target_name):
+                    method = getattr(module, self.target_name)
                     method_module = method.__module__
                     if method_module == self.agent.target_module_name:
-                        replacement = (module, self.method_name, method)
+                        replacement = (module, self.target_name, method)
                         self.replacements.append(replacement)
-                        setattr(module, self.method_name, self.execute)
+                        setattr(module, self.target_name, self.execute)
                 elif hasattr(module, self.agent.target.__name__):
                     target_name = self.agent.target.__name__
-                    replacement = (module, target_name, getattr(module, target_name))
+                    replacement = (module, 
+                                   target_name, 
+                                   getattr(module, target_name))
                     self.replacements.append(replacement)
                     setattr(module, target_name, self.agent.target)
 
     def change_attribute(self):
         def getattr_replacement(instance, attr_name):
-            if attr_name == self.method_name:
+            if attr_name == self.target_name:
                 return self.attribute_value
 
             return object.__getattribute__(instance, attr_name)
@@ -166,7 +168,7 @@ class Interception(object):
 
     def get_lost(self):
         '''Stop intercepting the target.'''
-        setattr(self.agent.target, self.method_name, self.old_method)
+        setattr(self.agent.target, self.target_name, self.old_method)
         self.old_method = None
         for replacement in self.replacements:
             setattr(replacement[0], replacement[1], replacement[2])
