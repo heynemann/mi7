@@ -13,6 +13,7 @@ from mi7.errors import UnknownAgentError
 
 AGENTS_FOR_MISSION = {}
 FINDER = None
+FINDER_PATH = None
 
 def get_actual_who(who):
     '''Gets the actual target for the interception'''
@@ -23,7 +24,8 @@ def get_actual_who(who):
         return sys.modules[who.__name__]
 
     #TODO: TEST THIS!
-    raise ValueError("Invalid person to spy on. Valid people are modules and classes.")
+    raise ValueError("""Invalid person to spy on. 
+    Valid people are modules and classes.""")
 
 def get_name(cls):
     '''Returns the name of the specified class/module'''
@@ -38,14 +40,17 @@ def finish_mission():
 def new_mission(decorated_function):
     '''Decorator that starts a new mission'''
     global FINDER
+    global FINDER_PATH
 
-    if not FINDER:
-        if hasattr(decorated_function, 'decorated_function'):
-            path = inspect.getfile(decorated_function.decorated_function)
-        else:
-            path = './tests/test_spy.py' 
+    if hasattr(decorated_function, 'decorated_function'):
+        path = inspect.getfile(decorated_function.decorated_function)
+    else:
+        path = inspect.getfile(decorated_function)
+
+    if path != FINDER_PATH:
         FINDER = ModuleFinder()
         FINDER.run_script(path)
+        FINDER_PATH = path
 
     def wrapper(*args, **kw):
         '''Wrapper for the new_mission decorator'''
@@ -85,7 +90,8 @@ class AgentsWatcher(object):
     def __getattr__(self, name):
         '''Returns the agent by name'''
         if not name in AGENTS_FOR_MISSION:
-            raise UnknownAgentError("You do not have clearance to use agent's %s services (agent not found)" % name)
+            raise UnknownAgentError("""You do not have clearance to
+            use agent's %s services (agent not found)""" % name)
         return AGENTS_FOR_MISSION[name]
 agents = AgentsWatcher()
 
@@ -95,7 +101,9 @@ class Agent(object):
         '''Initializes one agent.'''
         self.name = name
         self.target = target
-        self.target_module_name = inspect.isclass(target) and target.__module__ or target.__name__
+        self.target_module_name = inspect.isclass(target) and \
+                                        target.__module__ or \
+                                        target.__name__
         self.interceptions = {}
 
     def finish_mission(self):
@@ -125,18 +133,23 @@ class Interception(object):
         setattr(self.agent.target, self.method_name, self.execute)
 
         for module_name, module in FINDER.modules.iteritems():
-            if inspect.isbuiltin(module) or module_name == self.agent.target_module_name:
+            if inspect.isbuiltin(module) or \
+               module_name == self.agent.target_module_name:
                 continue
             if self.method_name in module.globalnames:
                 module = __import__(module_name)
                 if '.' in module_name:
                     module = reduce(getattr, module_name.split('.')[1:], module)
                 if hasattr(module, self.method_name):
-                    if getattr(module, self.method_name).__module__ ==  self.agent.target_module_name:
-                        self.replacements.append((module, self.method_name, getattr(module, self.method_name)))
+                    method = getattr(module, self.method_name)
+                    method_module = method.__module__
+                    if method_module == self.agent.target_module_name:
+                        replacement = (module, self.method_name, method)
+                        self.replacements.append(replacement)
                         setattr(module, self.method_name, self.execute)
                 elif hasattr(module, self.agent.target.__name__):
-                    setattr(module, self.agent.target.__name__, self.agent.target)
+                    target_name = self.agent.target.__name__
+                    setattr(module, target_name, self.agent.target)
 
 
     def get_lost(self):
