@@ -10,6 +10,7 @@ import inspect
 from modulefinder import ModuleFinder
 
 from mi7.errors import UnknownAgentError, InvalidAgentTargetError
+from mi7.asserts import HasSeenAssertion
 
 AGENTS_FOR_MISSION = {}
 FINDER = None
@@ -112,6 +113,16 @@ class Agent(object):
         if inspect.isclass(self.target):
             self.replace_getattribute()
 
+    def has_seen(self, target):
+        return HasSeenAssertion(self, target)
+    
+    def has_seen_interception(self, target):
+        for interception in self.interceptions.values():
+            if interception.match(target) and interception.was_called:
+                return True
+
+        return False
+
     def replace_getattribute(self):
         def getattribute_replacement(instance, attr_name):
             for interception in self.interceptions.values():
@@ -145,6 +156,7 @@ class Interception(object):
         self.return_value = None
         self.exception_value = None
         self.replacements = []
+        self.was_called = False
 
         self.resync_references()
 
@@ -197,6 +209,9 @@ class Interception(object):
 
     def execute(self, *args, **kw):
         '''Executes the interception.'''
+
+        self.was_called = True
+
         if self.exception_value:
             raise self.exception_value
         if self.attribute_value:
